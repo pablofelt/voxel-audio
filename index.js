@@ -57,16 +57,9 @@ exports.PositionAudio.prototype.createPanner = function() {
 	var self = this;
 	self.panner = audioContext.createPanner();
 	self.gainNode   = audioContext.createGainNode();
+  self.sourceObject = self.options.sourceObject || {'position':[0,0,0],'velocity':[0,0,0],'orientation':[1,0,0]}
 
-	var startingPosition = self.options.startingPosition;
-	if (!startingPosition || startingPosition.length !== 3) throw new Error('startingPosition required option. format: [x,y,z]');
-
-	self.panner.setPosition(startingPosition[0], startingPosition[1], startingPosition[2]);
-	self.position = {
-		x: startingPosition[0],
-		y: startingPosition[1],
-		z: startingPosition[2]
-	};
+  self.panner.setPosition(0,0,7);
 	self.panner.coneOuterGain = self.options.coneOuterGain || Number(0);
 	self.panner.coneOuterAngle = self.options.coneOuterAngle || 360;
 	self.panner.coneInnerAngle = self.options.coneInnerAngle || 350;
@@ -129,30 +122,54 @@ exports.PositionAudio.prototype.load = function(callback) {
 };
 
 
+function getOrientation(position,matrixWorld){
+	// Multiply the orientation vector by the world matrix of the camera.
+	var vec = new game.THREE.Vector3(0,0,1);
+  vec.applyMatrix3(matrixWorld);
+	var direction  = vec.sub(position).normalize();
+
+	var vec2 = new game.THREE.Vector3(0,-1,0);
+  vec.applyMatrix3(matrixWorld);
+	var up_direction = vec2.sub(position).normalize();
+
+  return [direction,up_direction]
+}
 
 function tick() {
+  if (!game.controls) return
 
 	game.camera.updateMatrixWorld();
 	var position = new game.THREE.Vector3().getPositionFromMatrix(game.camera.matrixWorld);
-	var velocity = game.controls.velocity.clone();
+	var velocity = game.controls.target().velocity.clone();
 
 	audioContext.listener.setPosition(position.x, position.y, position.z);
 	audioContext.listener.setVelocity(velocity.x, velocity.y, velocity.z);
 
-
-	var m = game.camera.matrixWorld;
-	// Multiply the orientation vector by the world matrix of the camera.
-	var vec = new game.THREE.Vector3(0,0,1);
-  vec.applyMatrix3(m);
-	var direction  = vec.sub(position).normalize();
-	var vec2 = new game.THREE.Vector3(0,-1,0);
-  vec.applyMatrix3(m);
-	var up_direction = vec2.sub(position).normalize();
-
+	//var m = game.camera.matrixWorld;
+	//// Multiply the orientation vector by the world matrix of the camera.
+	//var vec = new game.THREE.Vector3(0,0,1);
+  //vec.applyMatrix3(m);
+	//var direction  = vec.sub(position).normalize();
+	//var vec2 = new game.THREE.Vector3(0,-1,0);
+  //vec.applyMatrix3(m);
+	//var up_direction = vec2.sub(position).normalize();
+	//// Set the orientation and the up-vector for the listener.
+	//audioContext.listener.setOrientation(direction.x, direction.y, direction.z, up_direction.x, up_direction.y, up_direction.z);
 
 	// Set the orientation and the up-vector for the listener.
-	audioContext.listener.setOrientation(direction.x, direction.y, direction.z, up_direction.x, up_direction.y, up_direction.z);
+  var orientation = getOrientation(position,game.camera.matrixWorld)
+	audioContext.listener.setOrientation(orientation[0].x, orientation[0].y, orientation[0].z, orientation[1].x, orientation[1].y, orientation[1].z);
 
+  // Set the position, velocity, and orientation of each panner audio source
+	audioInstances.forEach(function(audio){
+	  //audio.panner.setPosition(0,0,7);
+	  //audio.panner.setVelocity(0,0,0);
+	  //audio.panner.setOrientation(1,0,0,0,0,0);
+	  audio.panner.setPosition(audio.sourceObject.position.x,audio.sourceObject.position.y,audio.sourceObject.position.z);
+	  audio.panner.setVelocity(audio.sourceObject.velocity.x,audio.sourceObject.velocity.y,audio.sourceObject.velocity.z)
+    var orientation = getOrientation(audio.sourceObject.position,game.camera.matrixWorld)
+	  //audio.panner.setOrientation(orientation[0].x, orientation[0].y, orientation[0].z, orientation[1].x, orientation[1].y, orientation[1].z);
+  })
 
 	if (!calculateAbsorption) return;
 	audioInstances.forEach(function(audio){
