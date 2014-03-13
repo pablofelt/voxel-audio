@@ -110,6 +110,12 @@ exports.PositionAudio.prototype.play = function() {
   self.source = sourcecopy
 };
 
+exports.PositionAudio.prototype.duration = function(){
+	var self = this
+	if (!self.ready) throw new Error('Audio not ready. Did you call load?')
+  return Math.round(self.source.buffer.duration*1000)
+}
+
 
 exports.PositionAudio.prototype.load = function(callback) {
 	var self = this;
