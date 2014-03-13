@@ -94,6 +94,7 @@ exports.PositionAudio.prototype.initSource = function() {
 
 exports.PositionAudio.prototype.play = function() {
 	var self = this;
+  var sourcecopy 
 	if (!self.ready) throw new Error('Audio not ready. Did you call load?');
 
 	self.gainNode.connect(audioDestination);
@@ -101,6 +102,12 @@ exports.PositionAudio.prototype.play = function() {
 	self.source.connect(self.panner);
 	if (self.source.noteOn) self.source.noteOn(0);
 	self.isPlaying = true;
+
+  // create a new source node so that it can
+  // be played multiple times (mostly useful for nonlooping sounds)
+  sourcecopy = audioContext.createBufferSource()
+  sourcecopy.buffer = self.source.buffer
+  self.source = sourcecopy
 };
 
 
