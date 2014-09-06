@@ -12,12 +12,28 @@ var bresenham3d = require('bresenham3d'),
     densityMapping = [],
     densityGainMin = 0.005,
     audioContext,
+    supportsWebAudio,
     game,
     audioDestination;
 
 
 exports.initGameAudio = function(game_, settings) {
-	audioContext = new webkitAudioContext();
+	init = true;
+
+  audioContext = null,
+  supportsWebAudio = true;
+  if (typeof webkitAudioContext !== 'undefined') {
+    audioContext = new webkitAudioContext();
+  } else {
+    supportsWebAudio = false;
+  }
+
+  if (!supportsWebAudio){
+    console.warn("Your browser does not appear to support the web audio api!");
+    return;
+  }
+
+	//audioContext = new webkitAudioContext();
 	audioDestination = audioContext.destination;
 	game = game_;
 
@@ -28,7 +44,6 @@ exports.initGameAudio = function(game_, settings) {
 	if (settings.densityGainMin) densityGainMin = settings.densityGainMin;
 
 	game.on('tick', tick);
-	init = true;
 };
 
 
@@ -40,6 +55,8 @@ exports.PositionAudio = function(options) {
 	var self = this;
 
 	if (!init) throw new Error('initGameAudio must be called first.');
+
+  if (!supportsWebAudio){return;}
 
 	self.options = options;
 	self.createPanner();
@@ -54,6 +71,7 @@ exports.PositionAudio = function(options) {
 };
 
 exports.PositionAudio.prototype.createPanner = function() {
+  if (!supportsWebAudio){return;}
 	var self = this;
 	self.panner = audioContext.createPanner();
 	self.gainNode   = audioContext.createGainNode();
@@ -72,12 +90,14 @@ exports.PositionAudio.prototype.createPanner = function() {
 };
 
 exports.PositionAudio.prototype.initURL = function() {
+  if (!supportsWebAudio){return;}
 	var self = this;
 	self.url = self.options.url;
 	self.ready = false;
 };
 
 exports.PositionAudio.prototype.initBuffer = function() {
+  if (!supportsWebAudio){return;}
 	var self = this;
 	self.options.source = audioContext.createBufferSource();
 	self.options.source.buffer = self.options.buffer;
@@ -85,6 +105,7 @@ exports.PositionAudio.prototype.initBuffer = function() {
 };
 
 exports.PositionAudio.prototype.initSource = function() {
+  if (!supportsWebAudio){return;}
 	var self = this;
 	self.source = self.options.source;
 	self.source.loop   = self.options.loop || false;
@@ -93,6 +114,7 @@ exports.PositionAudio.prototype.initSource = function() {
 
 
 exports.PositionAudio.prototype.play = function() {
+  if (!supportsWebAudio){return;}
 	var self = this;
   var sourcecopy 
 	if (!self.ready) throw new Error('Audio not ready. Did you call load?');
@@ -111,6 +133,7 @@ exports.PositionAudio.prototype.play = function() {
 };
 
 exports.PositionAudio.prototype.duration = function(){
+  if (!supportsWebAudio){return;}
 	var self = this
 	if (!self.ready) throw new Error('Audio not ready. Did you call load?')
   return Math.round(self.source.buffer.duration*1000)
@@ -118,6 +141,7 @@ exports.PositionAudio.prototype.duration = function(){
 
 
 exports.PositionAudio.prototype.load = function(callback) {
+  if (!supportsWebAudio){return;}
 	var self = this;
 	var request = new XMLHttpRequest();
 	request.open('GET', this.url, true);
@@ -136,6 +160,7 @@ exports.PositionAudio.prototype.load = function(callback) {
 
 
 function getOrientation(position,matrixWorld){
+  if (!supportsWebAudio){return;}
 	// Multiply the orientation vector by the world matrix of the camera.
 	var vec = new game.THREE.Vector3(0,0,1);
   vec.applyMatrix3(matrixWorld);
@@ -149,6 +174,7 @@ function getOrientation(position,matrixWorld){
 }
 
 function tick() {
+  if (!supportsWebAudio){return;}
   if (!game.controls) return
 
 	game.camera.updateMatrixWorld();
@@ -182,6 +208,7 @@ function tick() {
 // calculate absorption of things in the way. this is using the Beer-Lambert Law
 // see https://en.wikipedia.org/wiki/Beer%E2%80%93Lambert_law
 function adjustDensityGain(audio, position) {
+  if (!supportsWebAudio){return;}
 	var totalDistance = Math.sqrt( (Math.abs(audio.position.x - position.x))^2 + (Math.abs(audio.position.y - position.y))^2 + (Math.abs(audio.position.z - position.z))^2 );
 	var memo = {
 		audio: audio,
@@ -196,6 +223,7 @@ function adjustDensityGain(audio, position) {
 }
 
 function calculatePointDensity(pos, memo) {
+  if (!supportsWebAudio){return;}
 	memo.totalCount++;
 	var block = game.getBlock(pos);
 	if (block) {
@@ -208,6 +236,7 @@ function calculatePointDensity(pos, memo) {
 }
 
 function setDensityGain(memo) {
+  if (!supportsWebAudio){return;}
 	var gain = 1;
 	if (memo.count > 0) {
 		var exp = -1 * (memo.densitySum/120);
